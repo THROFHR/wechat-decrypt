@@ -61,6 +61,10 @@ _emoji_lookup_lock = threading.Lock()
 _emoji_keys_dict = None  # 保存 keys 引用供刷新用
 _emoji_last_refresh = 0
 
+_CHAT_LOG_STDOUT_ENABLED = os.environ.get("WECHAT_DECRYPT_CHAT_LOG_STDOUT", "").strip().lower() in {
+    "1", "true", "yes", "on"
+}
+
 def _build_emoji_lookup(keys_dict):
     """从 emoticon.db 构建 emoji md5 → URL 映射（直接解密，不走 cache）"""
     global _emoji_lookup, _emoji_keys_dict, _emoji_last_refresh
@@ -1586,18 +1590,18 @@ class SessionMonitor:
 
             broadcast_sse(msg)
 
-            try:
-                now = time.time()
-                msg_age = now - msg['timestamp']
-                tag = f"{self.patched_pages}pg/{self.decrypt_ms:.0f}ms"
-                sender = msg['sender']
-                now_str = datetime.fromtimestamp(now).strftime('%H:%M:%S')
-                if sender:
-                    print(f"[{msg['time']} 延迟={msg_age:.1f}s] [{msg['chat']}] {sender}: {msg['content']}  ({tag})", flush=True)
-                else:
-                    print(f"[{msg['time']} 延迟={msg_age:.1f}s] [{msg['chat']}] {msg['content']}  ({tag})", flush=True)
-            except Exception:
-                pass  # Windows CMD编码问题，不影响SSE推送
+            if _CHAT_LOG_STDOUT_ENABLED:
+                try:
+                    now = time.time()
+                    msg_age = now - msg['timestamp']
+                    tag = f"{self.patched_pages}pg/{self.decrypt_ms:.0f}ms"
+                    sender = msg['sender']
+                    if sender:
+                        print(f"[{msg['time']} 延迟={msg_age:.1f}s] [{msg['chat']}] {sender}: {msg['content']}  ({tag})", flush=True)
+                    else:
+                        print(f"[{msg['time']} 延迟={msg_age:.1f}s] [{msg['chat']}] {msg['content']}  ({tag})", flush=True)
+                except Exception:
+                    pass  # Windows CMD编码问题，不影响SSE推送
 
         self.prev_state = curr_state
 
