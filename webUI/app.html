@@ -34,30 +34,30 @@
         .page{
             width:min(1440px, calc(100vw - 24px));
             margin:0 auto;
-            padding:18px 0 24px;
+            padding:12px 0 16px;
         }
         .topbar{
             display:flex;
             align-items:center;
-            gap:12px;
+            gap:10px;
             flex-wrap:wrap;
-            margin-bottom:18px;
+            margin-bottom:12px;
         }
         .brand{
-            padding:10px 14px;
+            padding:8px 12px;
             border:1px solid var(--line);
-            border-radius:14px;
+            border-radius:12px;
             background:rgba(255,255,255,.04);
             box-shadow:0 12px 32px rgba(0,0,0,.18);
         }
         .brand h1{
             margin:0;
-            font-size:20px;
+            font-size:18px;
             letter-spacing:.3px;
         }
         .brand p{
-            margin:4px 0 0;
-            font-size:12px;
+            margin:3px 0 0;
+            font-size:11px;
             color:var(--muted);
         }
         .top-actions{
@@ -70,15 +70,15 @@
             display:inline-flex;
             align-items:center;
             gap:8px;
-            padding:10px 14px;
+            padding:8px 12px;
             border:1px solid var(--line);
-            border-radius:12px;
+            border-radius:10px;
             background:rgba(255,255,255,.04);
             color:var(--text);
             text-decoration:none;
             cursor:pointer;
             transition:.18s ease;
-            font-size:13px;
+            font-size:12px;
         }
         .btn:hover{
             transform:translateY(-1px);
@@ -94,42 +94,42 @@
         .layout{
             display:grid;
             grid-template-columns:360px 1fr;
-            gap:18px;
+            gap:12px;
         }
         .panel{
             background:linear-gradient(180deg, rgba(19,34,49,.96), rgba(11,20,30,.96));
             border:1px solid var(--line);
-            border-radius:18px;
+            border-radius:14px;
             box-shadow:0 18px 48px rgba(0,0,0,.25);
             overflow:hidden;
         }
         .panel-hd{
-            padding:16px 18px 12px;
+            padding:12px 14px 10px;
             border-bottom:1px solid rgba(255,255,255,.06);
         }
         .panel-hd h2{
             margin:0;
-            font-size:15px;
+            font-size:14px;
         }
         .panel-hd p{
-            margin:6px 0 0;
-            font-size:12px;
+            margin:4px 0 0;
+            font-size:11px;
             color:var(--muted);
-            line-height:1.5;
+            line-height:1.4;
         }
         .panel-bd{
-            padding:16px 18px 18px;
+            padding:12px 14px 14px;
         }
         .field{
-            margin-bottom:14px;
+            margin-bottom:10px;
         }
         .field:last-child{ margin-bottom:0; }
         .field label{
             display:block;
-            font-size:12px;
+            font-size:11px;
             font-weight:600;
             color:#c8d9e8;
-            margin-bottom:7px;
+            margin-bottom:5px;
             letter-spacing:.2px;
         }
         .field input,
@@ -137,17 +137,17 @@
         .field select{
             width:100%;
             border:1px solid rgba(255,255,255,.10);
-            border-radius:12px;
+            border-radius:10px;
             background:rgba(255,255,255,.04);
             color:var(--text);
-            padding:11px 12px;
+            padding:9px 10px;
             font:inherit;
             outline:none;
         }
         .field textarea{
-            min-height:88px;
+            min-height:66px;
             resize:vertical;
-            line-height:1.45;
+            line-height:1.35;
         }
         .field input:focus,
         .field textarea:focus,
@@ -156,28 +156,28 @@
             box-shadow:0 0 0 3px rgba(107,211,255,.12);
         }
         .help{
-            margin-top:6px;
-            font-size:11px;
+            margin-top:4px;
+            font-size:10px;
             color:var(--muted);
-            line-height:1.45;
+            line-height:1.35;
         }
         .switch-row{
             display:flex;
             align-items:center;
             justify-content:space-between;
             gap:10px;
-            padding:11px 0;
+            padding:8px 0;
             border-top:1px dashed rgba(255,255,255,.08);
         }
         .switch-row:first-child{ border-top:none; padding-top:0; }
         .switch-row strong{
             display:block;
-            font-size:13px;
+            font-size:12px;
         }
         .switch-row span{
             display:block;
-            margin-top:4px;
-            font-size:11px;
+            margin-top:3px;
+            font-size:10px;
             color:var(--muted);
         }
         .switch{
@@ -213,42 +213,42 @@
         }
         .toolbar{
             display:flex;
-            gap:10px;
+            gap:8px;
             flex-wrap:wrap;
-            margin-top:14px;
+            margin-top:10px;
         }
         .status-strip{
             display:grid;
             grid-template-columns:repeat(4, minmax(0, 1fr));
-            gap:12px;
-            margin-bottom:16px;
+            gap:8px;
+            margin-bottom:10px;
         }
         .stat{
-            padding:14px 15px;
+            padding:10px 11px;
             border:1px solid rgba(255,255,255,.08);
-            border-radius:14px;
+            border-radius:10px;
             background:rgba(255,255,255,.03);
         }
         .stat .k{
-            font-size:11px;
+            font-size:10px;
             color:var(--muted);
             text-transform:uppercase;
             letter-spacing:.9px;
         }
         .stat .v{
-            margin-top:8px;
-            font-size:22px;
+            margin-top:5px;
+            font-size:18px;
             font-weight:700;
         }
         .pill{
             display:inline-flex;
             align-items:center;
             gap:8px;
-            padding:8px 12px;
+            padding:6px 10px;
             border-radius:999px;
             border:1px solid rgba(255,255,255,.10);
             background:rgba(255,255,255,.04);
-            font-size:12px;
+            font-size:11px;
             color:var(--muted);
         }
         .pill.ok{ color:var(--ok); border-color:rgba(137,240,184,.22); }
@@ -257,29 +257,30 @@
             display:flex;
             align-items:center;
             justify-content:space-between;
-            gap:12px;
-            margin-bottom:14px;
+            gap:8px;
+            margin-bottom:10px;
             flex-wrap:wrap;
         }
         .messages{
             display:flex;
             flex-direction:column;
-            gap:12px;
-            max-height:calc(100vh - 240px);
+            gap:8px;
+            max-height:calc(100vh - 190px);
             overflow:auto;
-            padding-right:4px;
+            padding-right:2px;
         }
         .empty{
-            padding:44px 20px;
+            padding:26px 14px;
             text-align:center;
             border:1px dashed rgba(255,255,255,.10);
-            border-radius:16px;
+            border-radius:12px;
             color:var(--muted);
             background:rgba(255,255,255,.02);
+            font-size:12px;
         }
         .msg{
-            padding:14px 15px;
-            border-radius:16px;
+            padding:10px 11px;
+            border-radius:12px;
             border:1px solid rgba(255,255,255,.08);
             background:linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
         }
@@ -290,13 +291,13 @@
         .msg-hd{
             display:flex;
             align-items:center;
-            gap:8px;
+            gap:6px;
             flex-wrap:wrap;
-            margin-bottom:9px;
+            margin-bottom:6px;
         }
         .time{
             font-family:"SF Mono",Consolas,monospace;
-            font-size:11px;
+            font-size:10px;
             color:var(--muted);
         }
         .chat{
@@ -306,51 +307,51 @@
             white-space:nowrap;
             color:var(--accent);
             font-weight:700;
-            font-size:13px;
+            font-size:12px;
         }
         .sender{
-            font-size:12px;
+            font-size:11px;
             color:#f6d790;
         }
         .type{
             margin-left:auto;
-            font-size:11px;
+            font-size:10px;
             color:var(--muted);
-            padding:4px 8px;
+            padding:3px 7px;
             border-radius:999px;
             background:rgba(255,255,255,.05);
         }
         .content{
-            font-size:14px;
-            line-height:1.6;
+            font-size:13px;
+            line-height:1.4;
             white-space:pre-wrap;
             word-break:break-word;
             color:#f0f6fc;
         }
         .content img{
-            margin-top:8px;
-            max-width:min(100%, 320px);
-            border-radius:12px;
+            margin-top:6px;
+            max-width:min(100%, 260px);
+            border-radius:10px;
             display:block;
         }
         .rich{
-            margin-top:8px;
-            padding:10px 12px;
-            border-radius:12px;
+            margin-top:6px;
+            padding:8px 10px;
+            border-radius:10px;
             background:rgba(255,255,255,.04);
-            font-size:12px;
+            font-size:11px;
             color:#c9d6e2;
-            line-height:1.55;
+            line-height:1.4;
         }
         .tags{
             display:flex;
-            gap:6px;
+            gap:5px;
             flex-wrap:wrap;
-            margin-top:9px;
+            margin-top:6px;
         }
         .tag{
-            font-size:11px;
-            padding:4px 8px;
+            font-size:10px;
+            padding:3px 7px;
             border-radius:999px;
             border:1px solid rgba(255,255,255,.08);
             background:rgba(255,255,255,.03);
@@ -363,13 +364,13 @@
             font-weight:700;
         }
         .error{
-            margin-top:10px;
-            padding:10px 12px;
-            border-radius:12px;
+            margin-top:8px;
+            padding:8px 10px;
+            border-radius:10px;
             background:rgba(255,143,143,.10);
             border:1px solid rgba(255,143,143,.18);
             color:#ffd1d1;
-            font-size:12px;
+            font-size:11px;
             display:none;
         }
         .error.show{ display:block; }
@@ -409,7 +410,7 @@
             <section class="panel">
                 <div class="panel-hd">
                     <h2>匹配规则</h2>
-                    <p>发送者匹配看 <code>chat</code> 或 <code>sender</code>，内容匹配只看 <code>content</code>。规则留空时默认全部匹配。</p>
+                    <p>发送者匹配看 <code>chat</code> 或 <code>sender</code>，内容匹配只看 <code>content</code>。规则留空时默认全部匹配。下载时若填写了内容正则，只提取命中的那一段。</p>
                 </div>
                 <div class="panel-bd">
                     <div class="field">
@@ -450,6 +451,7 @@
 
                     <div class="toolbar">
                         <button class="btn primary" id="applyBtn" type="button">应用规则</button>
+                        <button class="btn" id="downloadBtn" type="button">下载匹配内容</button>
                         <button class="btn" id="clearBtn" type="button">清空消息</button>
                         <button class="btn" id="resetBtn" type="button">重置规则</button>
                     </div>
@@ -521,6 +523,7 @@
             matchedOnly: document.getElementById("matchedOnly"),
             autoScroll: document.getElementById("autoScroll"),
             applyBtn: document.getElementById("applyBtn"),
+            downloadBtn: document.getElementById("downloadBtn"),
             clearBtn: document.getElementById("clearBtn"),
             resetBtn: document.getElementById("resetBtn"),
             reconnectBtn: document.getElementById("reconnectBtn"),
@@ -688,6 +691,67 @@
             return `<div class="content">${esc(renderedContent)}</div>`;
         }
 
+        function clearMessages() {
+            state.allMessages = [];
+            state.byKey.clear();
+            touchLastUpdate("消息已清空");
+            renderMessages();
+        }
+
+        function extractDownloadValue(msg) {
+            const content = String(msg.content || "").replace(/^[^:\n]+:\n/, "").trim();
+            if (!content) return null;
+
+            const regex = state.filters.contentRegex;
+            if (!regex) return content;
+
+            regex.lastIndex = 0;
+            const matched = regex.exec(content);
+            if (!matched) return null;
+
+            if (matched.length > 1) {
+                const capture = matched.slice(1).find(Boolean);
+                return capture || matched[0];
+            }
+            return matched[0];
+        }
+
+        function downloadMatchedContent() {
+            const rows = [];
+            const seen = new Set();
+
+            for (const msg of state.allMessages) {
+                const result = matchesMessage(msg);
+                if (!result.matched) continue;
+
+                const extracted = extractDownloadValue(msg);
+                if (!extracted) continue;
+
+                const value = String(extracted).trim();
+                if (!value || seen.has(value)) continue;
+                seen.add(value);
+                rows.push(value);
+            }
+
+            if (!rows.length) {
+                showRuleError("没有可下载的匹配内容");
+                return;
+            }
+
+            clearRuleError();
+            const blob = new Blob([rows.join("\n") + "\n"], { type: "text/plain;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            const stamp = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
+            a.href = url;
+            a.download = `matched-content-${stamp}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+            clearMessages();
+        }
+
         function renderMessages() {
             const list = [...state.allMessages].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
             const rendered = [];
@@ -853,12 +917,8 @@
 
         function bindEvents() {
             els.applyBtn.addEventListener("click", applyFilters);
-            els.clearBtn.addEventListener("click", () => {
-                state.allMessages = [];
-                state.byKey.clear();
-                touchLastUpdate("消息已清空");
-                renderMessages();
-            });
+            els.downloadBtn.addEventListener("click", downloadMatchedContent);
+            els.clearBtn.addEventListener("click", clearMessages);
             els.resetBtn.addEventListener("click", resetFilters);
             els.reconnectBtn.addEventListener("click", () => {
                 connectSSE();
