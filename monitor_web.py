@@ -6,7 +6,7 @@ http://localhost:5678
 - 检测到变化后：全量解密DB + 全量WAL patch
 - SSE 服务器推送
 """
-import hashlib, struct, os, sys, json, time, sqlite3, io, threading, queue, traceback, subprocess
+import hashlib, struct, os, sys, json, time, sqlite3, io, threading, queue, traceback, subprocess, mimetypes
 import uuid
 import hmac as hmac_mod
 from concurrent.futures import ThreadPoolExecutor
@@ -1667,6 +1667,45 @@ def monitor_thread(enc_key, session_db, contact_names, db_cache=None, username_d
 
 # ============ Web ============
 
+_CUSTOM_WEB_EXTS = {
+    ".html", ".htm", ".css", ".js", ".mjs",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico",
+    ".woff", ".woff2", ".ttf", ".otf",
+}
+
+
+def _app_base_dir():
+    d = os.environ.get("WECHAT_DECRYPT_APP_DIR")
+    if d and os.path.isdir(d):
+        return os.path.realpath(d)
+    return os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _resolve_custom_web_file(request_path):
+    """把 /app.html 这类路径映射到 exe/源码目录下的静态文件。"""
+    parsed = urllib.parse.urlparse(request_path)
+    path = parsed.path or ""
+    if not path or path in ("/", "/index.html"):
+        return None
+    if path == "/stream" or path.startswith("/api/") or path.startswith("/img/"):
+        return None
+
+    rel_path = path.lstrip("/")
+    if not rel_path:
+        return None
+
+    base_dir = _app_base_dir()
+    fs_path = os.path.realpath(os.path.join(base_dir, rel_path))
+    if not (fs_path == base_dir or fs_path.startswith(base_dir + os.sep)):
+        return None
+    if not os.path.isfile(fs_path):
+        return None
+
+    ext = os.path.splitext(fs_path)[1].lower()
+    if ext not in _CUSTOM_WEB_EXTS:
+        return None
+    return fs_path
+
 HTML_PAGE = '''<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -1943,6 +1982,7 @@ a.msg-link{text-decoration:none;color:inherit}
 <h1>WeChat Monitor</h1>
 <div class="status ok" id="st">SSE 实时</div>
 <div class="stats"><span id="cnt">0 消息</span><span id="perf"></span></div>
+<a class="tools-btn" href="/app.html" title="自定义功能"><svg class="i"><use href="#i-sliders"/></svg> 自定义功能</a>
 <button class="tools-btn" onclick="toggleTools()" title="工具箱 (解密 / 导出 / 企业微信)"><svg class="i"><use href="#i-wrench"/></svg> 工具</button>
 <button class="settings-btn" onclick="toggleSettings()" title="通知设置"><svg class="i"><use href="#i-settings"/></svg></button>
 </div>
@@ -2771,11 +2811,34 @@ class Handler(BaseHTTPRequestHandler):
             pass  # 浏览器关闭连接，正常
 
     def do_GET(self):
+        custom_file = _resolve_custom_web_file(self.path)
         if self.path in ('/', '/index.html'):
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
             self.end_headers()
             self.wfile.write(HTML_PAGE.encode('utf-8'))
+
+        elif custom_file:
+            filepath = custom_file
+            try:
+                with open(filepath, 'rb') as f:
+                    data = f.read()
+            except OSError:
+                self.send_error(404)
+                return
+            ctype, _ = mimetypes.guess_type(filepath)
+            if filepath.lower().endswith(('.html', '.htm')):
+                ctype = 'text/html; charset=utf-8'
+            elif ctype and ctype.startswith('text/'):
+                ctype = ctype + '; charset=utf-8'
+            else:
+                ctype = ctype or 'application/octet-stream'
+            self.send_response(200)
+            self.send_header('Content-Type', ctype)
+            self.send_header('Content-Length', str(len(data)))
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            self.wfile.write(data)
 
         elif self.path.startswith('/api/history'):
             parsed = urllib.parse.urlparse(self.path)

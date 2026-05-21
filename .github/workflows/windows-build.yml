@@ -49,11 +49,27 @@ jobs:
       - name: Smoke test executable help output
         run: .\dist\WeChatDecrypt.exe --help
 
+      - name: Assemble release zip
+        shell: pwsh
+        run: |
+          $pkg = "release-package"
+          $zip = "WeChatDecrypt-windows.zip"
+          if (Test-Path $pkg) { Remove-Item $pkg -Recurse -Force }
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+
+          New-Item -ItemType Directory -Path $pkg | Out-Null
+          Copy-Item "dist/WeChatDecrypt.exe" -Destination $pkg -Force
+          Copy-Item "EXE_USAGE.md" -Destination $pkg -Force
+
+          if (Test-Path "webUI") {
+            Get-ChildItem -Path "webUI" -Force | Copy-Item -Destination $pkg -Recurse -Force
+          }
+
+          Compress-Archive -Path "$pkg/*" -DestinationPath $zip
+
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
           name: WeChatDecrypt-windows
-          path: |
-            dist/WeChatDecrypt.exe
-            EXE_USAGE.md
+          path: WeChatDecrypt-windows.zip
           if-no-files-found: error
