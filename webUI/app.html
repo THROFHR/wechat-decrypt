@@ -426,6 +426,12 @@
                     </div>
 
                     <div class="field">
+                        <label for="apiUrl">推送 API 地址</label>
+                        <input id="apiUrl" type="text" placeholder="例如：https://example.com/webhook">
+                        <div class="help">留空则不推送。填写后，服务端会把符合条件的消息 POST 到这个地址。配置会保存到本地文件，关闭网页后依然生效。</div>
+                    </div>
+
+                    <div class="field">
                         <div class="switch-row">
                             <div>
                                 <strong>只显示匹配消息</strong>
@@ -450,7 +456,7 @@
                     </div>
 
                     <div class="toolbar">
-                        <button class="btn primary" id="applyBtn" type="button">应用规则</button>
+                        <button class="btn primary" id="applyBtn" type="button">保存配置</button>
                         <button class="btn" id="downloadBtn" type="button">下载匹配内容</button>
                         <button class="btn" id="clearBtn" type="button">清空消息</button>
                         <button class="btn" id="resetBtn" type="button">重置规则</button>
@@ -520,6 +526,7 @@
         const els = {
             senderRule: document.getElementById("senderRule"),
             contentRule: document.getElementById("contentRule"),
+            apiUrl: document.getElementById("apiUrl"),
             matchedOnly: document.getElementById("matchedOnly"),
             autoScroll: document.getElementById("autoScroll"),
             applyBtn: document.getElementById("applyBtn"),
@@ -559,49 +566,68 @@
             els.ruleError.classList.remove("show");
         }
 
-        function saveFilters() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify({
-                senderRule: els.senderRule.value,
-                contentRule: els.contentRule.value,
-                matchedOnly: els.matchedOnly.checked,
-                autoScroll: els.autoScroll.checked,
-            }));
-        }
-
-        function loadFilters() {
+        async function loadFilters() {
             try {
-                const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-                els.senderRule.value = saved.senderRule || "";
-                els.contentRule.value = saved.contentRule || "";
-                els.matchedOnly.checked = saved.matchedOnly !== false;
-                els.autoScroll.checked = saved.autoScroll !== false;
+                const resp = await fetch("/api/match-push-config");
+                const saved = await resp.json();
+                if (!resp.ok) throw new Error(saved.error || "读取配置失败");
+                els.senderRule.value = saved.sender_rule || "";
+                els.contentRule.value = saved.content_rule || "";
+                els.apiUrl.value = saved.api_url || "";
+            } catch (err) {
+                showRuleError("读取配置失败: " + err.message);
+            }
+            try {
+                const localSaved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
+                els.matchedOnly.checked = localSaved.matchedOnly !== false;
+                els.autoScroll.checked = localSaved.autoScroll !== false;
             } catch (_) {
             }
         }
 
-        function applyFilters() {
+        async function applyFilters() {
             try {
                 const senderRule = String(els.senderRule.value || "").trim();
                 const contentRule = String(els.contentRule.value || "").trim();
+                const apiUrl = String(els.apiUrl.value || "").trim();
+                if (senderRule) buildRuleRegex(senderRule);
+                if (contentRule) buildRuleRegex(contentRule);
                 state.filters = {
                     senderRuleText: senderRule,
                     contentRuleText: contentRule,
                     senderRegex: senderRule ? buildRuleRegex(senderRule) : null,
                     contentRegex: contentRule ? buildRuleRegex(contentRule) : null,
+                    apiUrl,
                     matchedOnly: els.matchedOnly.checked,
                     autoScroll: els.autoScroll.checked,
                 };
+                const resp = await fetch("/api/match-push-config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sender_rule: senderRule,
+                        content_rule: contentRule,
+                        api_url: apiUrl,
+                    })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error || "保存配置失败");
                 clearRuleError();
-                saveFilters();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify({
+                    matchedOnly: els.matchedOnly.checked,
+                    autoScroll: els.autoScroll.checked,
+                }));
+                touchLastUpdate("配置已保存");
                 renderMessages();
             } catch (err) {
                 showRuleError("规则有误: " + err.message);
             }
         }
 
-        function resetFilters() {
+        async function resetFilters() {
             els.senderRule.value = "";
             els.contentRule.value = "";
+            els.apiUrl.value = "";
             els.matchedOnly.checked = true;
             els.autoScroll.checked = true;
             clearRuleError();
@@ -611,9 +637,25 @@
                 contentRuleText: "",
                 senderRegex: null,
                 contentRegex: null,
+                apiUrl: "",
                 matchedOnly: true,
                 autoScroll: true,
             };
+            try {
+                const resp = await fetch("/api/match-push-config", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        sender_rule: "",
+                        content_rule: "",
+                        api_url: "",
+                    })
+                });
+                const data = await resp.json();
+                if (!resp.ok) throw new Error(data.error || "重置配置失败");
+            } catch (err) {
+                showRuleError("重置配置失败: " + err.message);
+            }
             renderMessages();
         }
 

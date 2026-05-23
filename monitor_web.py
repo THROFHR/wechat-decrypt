@@ -6,9 +6,12 @@ http://localhost:5678
 - 检测到变化后：全量解密DB + 全量WAL patch
 - SSE 服务器推送
 """
-import hashlib, struct, os, sys, json, time, sqlite3, io, threading, queue, traceback, subprocess, mimetypes
+import hashlib, struct, os, sys, json, time, sqlite3, io, threading, queue, traceback, subprocess, mimetypes, re
 import uuid
 import hmac as hmac_mod
+import urllib.request
+import urllib.error
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import closing
 from datetime import datetime
@@ -32,6 +35,15 @@ WAL_HEADER_SZ = 32
 WAL_FRAME_HEADER_SZ = 24
 
 from config import load_config
+
+
+def _runtime_base_dir():
+    d = os.environ.get("WECHAT_DECRYPT_APP_DIR")
+    if d and os.path.isdir(d):
+        return os.path.realpath(d)
+    return os.path.realpath(os.path.dirname(os.path.abspath(__file__)))
+
+
 _cfg = load_config()
 DB_DIR = _cfg["db_dir"]
 KEYS_FILE = _cfg["keys_file"]
@@ -64,6 +76,175 @@ _emoji_last_refresh = 0
 _CHAT_LOG_STDOUT_ENABLED = os.environ.get("WECHAT_DECRYPT_CHAT_LOG_STDOUT", "").strip().lower() in {
     "1", "true", "yes", "on"
 }
+
+MATCH_PUSH_CONFIG_FILE = os.path.join(_runtime_base_dir(), "match_push_config.json")
+MATCH_PUSH_DEFAULT = {
+    "sender_rule": "",
+    "content_rule": "",
+    "api_url": "",
+}
+_match_push_lock = threading.Lock()
+_match_push_state = None
+_match_push_queue = queue.Queue(maxsize=500)
+_match_push_worker_started = False
+_match_push_recent_keys = deque(maxlen=2000)
+_match_push_recent_set = set()
+_match_push_recent_lock = threading.Lock()
+
+
+def _normalize_match_push_config(cfg):
+    cfg = cfg or {}
+    return {
+        "sender_rule": str(cfg.get("sender_rule", "") or "").strip(),
+        "content_rule": str(cfg.get("content_rule", "") or "").strip(),
+        "api_url": str(cfg.get("api_url", "") or "").strip(),
+    }
+
+
+def _build_match_push_runtime(cfg):
+    sender_rule = cfg.get("sender_rule", "")
+    content_rule = cfg.get("content_rule", "")
+    api_url = cfg.get("api_url", "")
+    sender_regex = re.compile(sender_rule) if sender_rule else None
+    content_regex = re.compile(content_rule) if content_rule else None
+    enabled = bool(api_url)
+    return {
+        **cfg,
+        "sender_regex": sender_regex,
+        "content_regex": content_regex,
+        "enabled": enabled,
+    }
+
+
+def load_match_push_config():
+    if not os.path.exists(MATCH_PUSH_CONFIG_FILE):
+        return _build_match_push_runtime(MATCH_PUSH_DEFAULT.copy())
+    try:
+        with open(MATCH_PUSH_CONFIG_FILE, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+        cfg = _normalize_match_push_config(raw)
+    except Exception:
+        cfg = MATCH_PUSH_DEFAULT.copy()
+    return _build_match_push_runtime(cfg)
+
+
+def get_match_push_config():
+    global _match_push_state
+    with _match_push_lock:
+        if _match_push_state is None:
+            _match_push_state = load_match_push_config()
+        state = _match_push_state
+    return {
+        "sender_rule": state["sender_rule"],
+        "content_rule": state["content_rule"],
+        "api_url": state["api_url"],
+        "enabled": state["enabled"],
+    }
+
+
+def save_match_push_config(cfg):
+    global _match_push_state
+    normalized = _normalize_match_push_config(cfg)
+    runtime_state = _build_match_push_runtime(normalized)
+    os.makedirs(os.path.dirname(MATCH_PUSH_CONFIG_FILE), exist_ok=True)
+    with open(MATCH_PUSH_CONFIG_FILE, "w", encoding="utf-8") as f:
+        json.dump(normalized, f, ensure_ascii=False, indent=2)
+    with _match_push_lock:
+        _match_push_state = runtime_state
+    return {
+        "sender_rule": runtime_state["sender_rule"],
+        "content_rule": runtime_state["content_rule"],
+        "api_url": runtime_state["api_url"],
+        "enabled": runtime_state["enabled"],
+    }
+
+
+def _message_push_key(msg):
+    return json.dumps({
+        "timestamp": msg.get("timestamp", 0),
+        "username": msg.get("username", ""),
+        "chat": msg.get("chat", ""),
+        "sender": msg.get("sender", ""),
+        "type": msg.get("type", ""),
+        "content": msg.get("content", ""),
+    }, ensure_ascii=False, sort_keys=True)
+
+
+def _matches_push_rules(msg, state):
+    if not state.get("enabled"):
+        return False
+    sender_text = "\n".join([x for x in [msg.get("chat", ""), msg.get("sender", "")] if x])
+    content_text = str(msg.get("content", "") or "")
+    sender_regex = state.get("sender_regex")
+    content_regex = state.get("content_regex")
+    sender_ok = True if sender_regex is None else bool(sender_regex.search(sender_text))
+    content_ok = True if content_regex is None else bool(content_regex.search(content_text))
+    return sender_ok and content_ok
+
+
+def _mark_push_seen(push_key):
+    with _match_push_recent_lock:
+        if push_key in _match_push_recent_set:
+            return False
+        if len(_match_push_recent_keys) == _match_push_recent_keys.maxlen:
+            old = _match_push_recent_keys.popleft()
+            _match_push_recent_set.discard(old)
+        _match_push_recent_keys.append(push_key)
+        _match_push_recent_set.add(push_key)
+    return True
+
+
+def _post_match_message(msg, state):
+    body = {
+        "sender_rule": state["sender_rule"],
+        "content_rule": state["content_rule"],
+        "message": msg,
+    }
+    data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        state["api_url"],
+        data=data,
+        headers={"Content-Type": "application/json; charset=utf-8"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        resp.read()
+
+
+def _match_push_worker():
+    while True:
+        msg = _match_push_queue.get()
+        try:
+            state = get_match_push_config()
+            if not _matches_push_rules(msg, state):
+                continue
+            _post_match_message(msg, state)
+        except Exception as e:
+            print(f"[push] 推送失败: {e}", flush=True)
+
+
+def ensure_match_push_worker():
+    global _match_push_worker_started
+    with _match_push_lock:
+        if _match_push_worker_started:
+            return
+        threading.Thread(target=_match_push_worker, daemon=True, name="match-push-worker").start()
+        _match_push_worker_started = True
+
+
+def enqueue_match_push(msg):
+    state = get_match_push_config()
+    if not state.get("enabled"):
+        return
+    if not _matches_push_rules(msg, state):
+        return
+    push_key = _message_push_key(msg)
+    if not _mark_push_seen(push_key):
+        return
+    try:
+        _match_push_queue.put_nowait(dict(msg))
+    except queue.Full:
+        print("[push] 队列已满，丢弃一条匹配消息", flush=True)
 
 def _build_emoji_lookup(keys_dict):
     """从 emoticon.db 构建 emoji md5 → URL 映射（直接解密，不走 cache）"""
@@ -1161,6 +1342,7 @@ class SessionMonitor:
                 if len(messages_log) > MAX_LOG:
                     messages_log = messages_log[-MAX_LOG:]
             broadcast_sse(msg_data)
+            enqueue_match_push(msg_data)
 
     def _query_msg_content(self, username, timestamp, base_type):
         """通用: 从 message_*.db 查找指定类型消息的 XML 内容
@@ -1589,6 +1771,7 @@ class SessionMonitor:
                     messages_log = messages_log[-MAX_LOG:]
 
             broadcast_sse(msg)
+            enqueue_match_push(msg)
 
             if _CHAT_LOG_STDOUT_ENABLED:
                 try:
@@ -2956,6 +3139,19 @@ class Handler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
 
+        elif self.path == "/api/match-push-config":
+            try:
+                data = get_match_push_config()
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(data, ensure_ascii=False).encode("utf-8"))
+            except Exception as e:
+                self.send_response(500)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
+
         else:
             self.send_error(404)
 
@@ -3007,6 +3203,26 @@ class Handler(BaseHTTPRequestHandler):
                 "task": task_name,
                 "name": TOOL_TASKS[task_name]["name"],
             }).encode())
+        elif self.path == "/api/match-push-config":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length).decode("utf-8") if length else "{}"
+                req = json.loads(body)
+                saved = save_match_push_config(req)
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(json.dumps(saved, ensure_ascii=False).encode("utf-8"))
+            except re.error as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": f"正则错误: {e}"}).encode())
+            except Exception as e:
+                self.send_response(400)
+                self.send_header("Content-Type", "application/json")
+                self.end_headers()
+                self.wfile.write(json.dumps({"error": str(e)}).encode())
         elif self.path == "/api/tool/cancel":
             with _tool_lock:
                 proc = _tool_running.get("proc")
@@ -3138,6 +3354,7 @@ def main():
     print("  WeChat Decrypt — Web UI + 实时监听", flush=True)
     print("=" * 60, flush=True)
 
+    ensure_match_push_worker()
     _start_monitor_if_ready()
 
     server = ThreadedServer(('0.0.0.0', PORT), Handler)
