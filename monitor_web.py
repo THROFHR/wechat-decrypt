@@ -195,12 +195,7 @@ def _mark_push_seen(push_key):
 
 
 def _post_match_message(msg, state):
-    body = {
-        "sender_rule": state["sender_rule"],
-        "content_rule": state["content_rule"],
-        "message": msg,
-    }
-    data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    data = json.dumps(msg, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         state["api_url"],
         data=data,
