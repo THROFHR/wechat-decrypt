@@ -204,7 +204,14 @@ def _post_match_message(msg, state):
     req = urllib.request.Request(
         state["api_url"],
         data=data,
-        headers={"Content-Type": "application/json; charset=utf-8"},
+        headers={
+            "Content-Type": "application/json; charset=utf-8",
+            "Accept": "application/json, text/plain, */*",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                          "AppleWebKit/537.36 (KHTML, like Gecko) "
+                          "Chrome/120.0.0.0 Safari/537.36"
+                          "WeChatDecrypt/1.0",
+        },
         method="POST",
     )
     with urllib.request.urlopen(req, timeout=10) as resp:
